@@ -1,6 +1,6 @@
 # FedMTFF
 
-This is an implementation of the Federated Learning based Multi-task Feature Fusion Framework (FedMTFF), which aims at integrating information on highly different tasks.
+This is an implementation of the paper "Federated Learning based Multi-task Feature Fusion Framework for Expressive Code Semantic Extraction" (FedMTFF), which aims at integrating information on highly different cross-language source code tasks.
 
 In this implementation, we discussed many module:
 
@@ -78,7 +78,7 @@ Note that you can use ```--backbone_model``` to replace the implement model as f
 
 # Datasets
 
-Note that due to the limitations of CMT, we cannot upload all datasets. This will drastically change the results of the experiment. All our datasets come from public papers. For more accurate experiments, we strongly recommend that you download the datasets according to the following url and set them:
+Note that due to the space limitations of Github, we cannot upload all datasets. This will drastically change the results of the experiment. All our datasets come from public papers. For more accurate experiments, we strongly recommend that you download the datasets according to the following url and set them:
 
 CSharp: https://aka.ms/iclr18-prog-graphs-dataset
 
