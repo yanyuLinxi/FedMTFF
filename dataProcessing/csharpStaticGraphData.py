@@ -181,15 +181,16 @@ class CSharpStaticGraphDataset(Dataset):
         data_i = 0
 
         for raw_path in self.raw_paths:
-            with gzip.open(raw_path, "r") as f:  # josnl.gz
-                raw_data = f.read()
-                data_utf8 = raw_data.decode("utf-8")
-                for raw_line in data_utf8.split("\n"):
-                    if len(raw_line) == 0:  #
-                        continue
-
+            with gzip.open(raw_path, "r") as f:  # .gz文件
+                # raw_data = f.read()
+                # data_utf8 = raw_data.decode("utf-8")
+                # for raw_line in data_utf8.split("\n"):
+                #     if len(raw_line) == 0:  #
+                #         continue
+                raw_list = json.loads(f.read())
+                for raw_dict in raw_list:
                     graph_data = CSharpStaticGraphData()
-                    raw_dict = json.loads(raw_line)
+                    # raw_dict = json.loads(raw_line)
                     filename = raw_dict['filename']
                     ContextGraph = raw_dict['ContextGraph']
 
