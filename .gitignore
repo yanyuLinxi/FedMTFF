@@ -143,5 +143,5 @@ ServerResult/
 *.cpython-37.pyc
 *.png
 
-# pycharm
+# PyCharm
 .idea/*

@@ -210,7 +210,7 @@ class CSharpStaticGraphDatasetNaming(Dataset):
         data_i = 0
 
         for raw_path in self.raw_paths:
-            with gzip.open(raw_path, "r") as f:  # josnl.gz文件先通过gz读取，再按行读取。
+            with gzip.open(raw_path, "r") as f:  # .gz文件
                 # raw_data = f.read()
                 # data_utf8 = raw_data.decode("utf-8")
                 # for raw_line in data_utf8.split("\n"):

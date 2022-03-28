@@ -5,7 +5,7 @@ import argparse
 from enum import Enum
 import time
 import os.path as osp
-from os import getpid
+from os import getpid, mkdir
 import json
 from typing import Any, Dict, Optional, Tuple, List, Iterable, Union
 import torch
@@ -451,6 +451,9 @@ class FL_CodeCompletion_Four:
 
         if not osp.exists(self.args.value_dict_dir) or not osp.exists(self.args.type_dict_dir):
             raise Exception("vocab dict not exists error")
+
+        if not osp.exists(self.args.result_dir):
+            mkdir(self.args.result_dir)
 
         with open(self.args.value_dict_dir, 'r') as f:
             value_dict = json.load(f)
