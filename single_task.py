@@ -12,6 +12,9 @@ import numpy as np
 from random import shuffle
 from multiprocessing import cpu_count
 
+import joblib
+import os
+
 # 导入本地库
 from utils import name_to_dataset, name_to_model, name_to_output_model, DataFold
 from utils import pretty_print_epoch_task_metrics, cal_early_stopping_metric, cal_metrics
@@ -32,8 +35,8 @@ class Single_Task:
         parser.add_argument('--result_dir', type=str, default="trained_models/", help='')
 
         # 读取模型、继续训练
-        #parser.add_argument('--load_model_file', type=str, default="trained_models/model_save/DGAP-Model_2021-06-06-10-57-33_2296_best_model.pt", help='')
-        parser.add_argument('--load_model_file', type=str, default=None, help='')
+        parser.add_argument('--load_model_file', type=str, default=None, help='当这个值为False时，不导入模型。当部位None时，则是模型存储的地址。')
+        #parser.add_argument('--load_model_file', type=str, default="trained_models/model_save/Single-Task_2022-05-07-18-27-35_26536_resgagn_best_model", help='')
 
         # 模型训练
         parser.add_argument('--backbone_model',
@@ -100,7 +103,7 @@ class Single_Task:
 
     @property
     def best_model_file(self):
-        return osp.join(self.args.result_dir, osp.join("model_save", "%s_best_model.pt" % self.run_id))
+        return osp.join(self.args.result_dir, osp.join("model_save", "%s_%s_best_model" % (self.run_id, self.args.backbone_model)))
     
     
     def __load_data(self):
@@ -127,21 +130,24 @@ class Single_Task:
         self._loaded_datasets[DataFold.VALIDATION] = name_to_dataset(self.args.dataset_name, validate_path, DataFold.VALIDATION, self.args, num_workers=self.args.dataset_num_workers)
 
     def save_model(self, path):
-        # TODO: 存储模型、输出层、优化器、args， 以后缀名为区分，没改完。不以state_dict存储。
-        save_dict = {
-            "model_state_dict": self.model.state_dict(),
-            "output_model": self.output_model.state_dict(),
-            "optimizer_state_dict": self.optimizer.state_dict(),
-            "params": vars(self.args),
-        }
-        torch.save(save_dict, path)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        joblib.dump(self.model, os.path.join(path, "model.joblib"))
+        joblib.dump(self.output_model, os.path.join(path, "output_model.joblib"))
+        torch.save(self.optimizer,os.path.join(path, "optimizer.pt"))
+        with open(os.path.join(path, "params.json"), "w") as f:
+            json.dump(vars(self.args), f, indent=4)
     
     def load_model(self, path):
-        # TODO: 读取读取模型、输出层、优化器、args、没改完。
-        checkpoint = torch.load(path)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.output_model.load_state_dict(checkpoint['output_model'])
-        self.args.cur_epoch = checkpoint['params']['cur_epoch']
+        if not os.path.exists(path):
+            raise Exception("文件夹不存在 %s" % path)
+        self.model = joblib.load(os.path.join(path, "model.joblib"))
+        self.output_model = joblib.load(os.path.join(path, "output_model.joblib"))
+        self.optimizer = torch.load(os.path.join(path, "optimizer.pt"))
+        with open(os.path.join(path, "params.json"), "r") as f:
+            args = json.load(f)
+            
+        self.args.cur_epoch = args['cur_epoch']
     
     def __make_model(self) -> None:
         # 构造模型

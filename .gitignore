@@ -142,3 +142,4 @@ ServerResult/
 *.pyc
 *.cpython-37.pyc
 *.png
+trained_models/
