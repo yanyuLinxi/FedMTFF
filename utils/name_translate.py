@@ -3,7 +3,7 @@ import json
 from multiprocessing import cpu_count
 
 # 本地库
-from models import GGNN
+from models import GGNN, ResGAGN, GNN_FiLM, Edge_Conv
 from dataProcessing import CSharpStaticGraphDatasetGenerator
 from tasks import VarmisuseOutputLayer
 
@@ -79,8 +79,35 @@ def name_to_model(name: str, args):
                     embedding_num_classes=70,
                     dropout=args.dropout_rate,
                     max_variable_candidates=args.max_variable_candidates,
-                    device=args.device
-                    )
+                    device=args.device)
+    elif name in ["resgagn"]:
+        return ResGAGN(num_edge_types=args.num_edge_types,
+                       in_features=args.graph_node_max_num_chars,
+                       out_features=args.out_features,
+                       embedding_out_features=args.h_features,
+                       embedding_num_classes=70,
+                       dropout=args.dropout_rate,
+                       max_node_per_graph=args.max_node_per_graph,
+                       max_variable_candidates=args.max_variable_candidates,
+                       device=args.device)
+    elif name in ["gnn_film", "gnnfilm"]:
+        return GNN_FiLM(num_edge_types=args.num_edge_types,
+                        in_features=args.graph_node_max_num_chars,
+                        out_features=args.out_features,
+                        embedding_out_features=args.h_features,
+                        embedding_num_classes=70,
+                        dropout=args.dropout_rate,
+                        max_variable_candidates=args.max_variable_candidates,
+                        device=args.device)
+    elif name in ["edge_conv", "edgeconv"]:
+        return Edge_Conv(num_edge_types=args.num_edge_types,
+                        in_features=args.graph_node_max_num_chars,
+                        out_features=args.out_features,
+                        embedding_out_features=args.h_features,
+                        embedding_num_classes=70,
+                        dropout=args.dropout_rate,
+                        max_variable_candidates=args.max_variable_candidates,
+                        device=args.device)
     else:
         raise ValueError("Unkown model name '%s'" % name)
 

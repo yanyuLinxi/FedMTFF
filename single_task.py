@@ -38,7 +38,7 @@ class Single_Task:
         # 模型训练
         parser.add_argument('--backbone_model',
                             type=str,
-                            default="ggnn",
+                            default="resgagn",
                             help='the backbone model of features extract')
         parser.add_argument('--optimizer', type=str, default="Adam", help='TODO:暂时不接受选择')
         parser.add_argument('--lr', type=float, default=0.001, help='')
@@ -127,12 +127,21 @@ class Single_Task:
         self._loaded_datasets[DataFold.VALIDATION] = name_to_dataset(self.args.dataset_name, validate_path, DataFold.VALIDATION, self.args, num_workers=self.args.dataset_num_workers)
 
     def save_model(self, path):
-        # TODO: 存储模型、输出层、优化器、args， 以后缀名为区分。
-        pass
+        # TODO: 存储模型、输出层、优化器、args， 以后缀名为区分，没改完。不以state_dict存储。
+        save_dict = {
+            "model_state_dict": self.model.state_dict(),
+            "output_model": self.output_model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "params": vars(self.args),
+        }
+        torch.save(save_dict, path)
     
     def load_model(self, path):
-        # TODO: 读取读取模型、输出层、优化器、args、
-        self.model = torch.load(path)
+        # TODO: 读取读取模型、输出层、优化器、args、没改完。
+        checkpoint = torch.load(path)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.output_model.load_state_dict(checkpoint['output_model'])
+        self.args.cur_epoch = checkpoint['params']['cur_epoch']
     
     def __make_model(self) -> None:
         # 构造模型
@@ -312,9 +321,11 @@ class Single_Task:
                 best_val_metric_epoch = epoch
                 best_val_metric_descr = valid_metric_descr
 
-
+    
 
 if __name__ == '__main__':
+    
+    
     cc_cls = Single_Task
     
     parser = cc_cls.default_args()
