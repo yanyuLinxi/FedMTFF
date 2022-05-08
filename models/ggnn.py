@@ -21,7 +21,6 @@ class GGNN(MessagePassing):
         embedding_out_features,
         embedding_num_classes,
         dropout=0,
-        max_variable_candidates=5,
         add_self_loops=False,
         bias=True,
         aggr="mean",
@@ -32,7 +31,6 @@ class GGNN(MessagePassing):
         self.num_edge_types = num_edge_types
         self.device = device
         self.dropout = dropout
-        self.max_variable_candidates = max_variable_candidates
         # 先对值进行embedding
         self.value_embeddingLayer = EmbeddingLayer(embedding_num_classes,
                                                    in_features,

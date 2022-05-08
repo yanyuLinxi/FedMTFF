@@ -3,7 +3,7 @@ import json
 from multiprocessing import cpu_count
 
 # 本地库
-from models import GGNN, ResGAGN, GNN_FiLM, Edge_Conv
+from models import GGNN, ResGAGN, GNN_FiLM, Edge_Conv, MTFF_Co_Attention
 from dataProcessing import CSharpStaticGraphDatasetGenerator
 from tasks import VarmisuseOutputLayer
 
@@ -58,12 +58,13 @@ def name_to_dataset(name: str, path: str, data_fold: DataFold, args, num_workers
     )
 
 
-def name_to_model(name: str, args):
+def name_to_model(name: str, args, **kwargs):
     """将字符串转为模型并返回。
 
     Args:
         name (str): 模型名称。推荐小写。
         args (_type_): 可能会用到的参数
+        **kwargs: 可能需要传入的其他字典型参数。
 
     Raises:
         ValueError: 类名不存在
@@ -71,14 +72,12 @@ def name_to_model(name: str, args):
     name = name.lower()
     name = name.replace(concat_singal, "")
     if name in ["ggnn", "graphgatedneuralnetwork"]:
-        # TODO: 修改GGNN后修改参数。
         return GGNN(num_edge_types=args.num_edge_types,
                     in_features=args.graph_node_max_num_chars,
                     out_features=args.out_features,
                     embedding_out_features=args.h_features,
                     embedding_num_classes=70,
                     dropout=args.dropout_rate,
-                    max_variable_candidates=args.max_variable_candidates,
                     device=args.device)
     elif name in ["resgagn"]:
         return ResGAGN(num_edge_types=args.num_edge_types,
@@ -88,7 +87,6 @@ def name_to_model(name: str, args):
                        embedding_num_classes=70,
                        dropout=args.dropout_rate,
                        max_node_per_graph=args.max_node_per_graph,
-                       max_variable_candidates=args.max_variable_candidates,
                        device=args.device)
     elif name in ["gnn_film", "gnnfilm"]:
         return GNN_FiLM(num_edge_types=args.num_edge_types,
@@ -97,17 +95,25 @@ def name_to_model(name: str, args):
                         embedding_out_features=args.h_features,
                         embedding_num_classes=70,
                         dropout=args.dropout_rate,
-                        max_variable_candidates=args.max_variable_candidates,
                         device=args.device)
     elif name in ["edge_conv", "edgeconv"]:
         return Edge_Conv(num_edge_types=args.num_edge_types,
-                        in_features=args.graph_node_max_num_chars,
-                        out_features=args.out_features,
-                        embedding_out_features=args.h_features,
-                        embedding_num_classes=70,
-                        dropout=args.dropout_rate,
-                        max_variable_candidates=args.max_variable_candidates,
-                        device=args.device)
+                         in_features=args.graph_node_max_num_chars,
+                         out_features=args.out_features,
+                         embedding_out_features=args.h_features,
+                         embedding_num_classes=70,
+                         dropout=args.dropout_rate,
+                         device=args.device)
+    elif name in ["mtff_co_attention", "mtff_module", "mtff_model", "mtff"]:
+        return MTFF_Co_Attention(
+            feature_models=kwargs["feature_models"],
+            in_features=args.graph_node_max_num_chars,
+            out_features=args.out_features,
+            embedding_out_features=args.h_features,
+            embedding_num_classes=70,
+            max_node_per_graph=args.max_node_per_graph,
+            device=args.device
+        )
     else:
         raise ValueError("Unkown model name '%s'" % name)
 

@@ -58,7 +58,6 @@ class ResGAGN(MessagePassing):
                  dropout=0,
                  max_node_per_graph=50,
                  model_epoch=6,
-                 max_variable_candidates=5,
                  add_self_loops=False,
                  bias=True,
                  aggr="mean",
@@ -66,7 +65,6 @@ class ResGAGN(MessagePassing):
         super(ResGAGN, self).__init__(aggr=aggr)
         # params set
         self.device = device
-        self.max_variable_candidates = max_variable_candidates
         self.max_node_per_graph = max_node_per_graph
         self.model_epoch = model_epoch
         # 先对值进行embedding

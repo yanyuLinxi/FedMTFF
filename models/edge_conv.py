@@ -16,7 +16,6 @@ class Edge_Conv(MessagePassing):
                  embedding_out_features,
                  embedding_num_classes,
                  dropout=0,
-                 max_variable_candidates=5,
                  model_epoch=2,
                  aggr="mean",
                  device="cpu"):
@@ -26,7 +25,6 @@ class Edge_Conv(MessagePassing):
         self.device = device
         self.dropout = dropout
         self.model_epoch = model_epoch
-        self.max_variable_candidates = max_variable_candidates
         # 先对值进行embedding
         self.value_embeddingLayer = EmbeddingLayer(embedding_num_classes,
                                                    in_features,
