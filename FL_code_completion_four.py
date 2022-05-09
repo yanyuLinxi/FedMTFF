@@ -57,7 +57,7 @@ class FL_CodeCompletion_Four:
 
         parser.add_argument('--backbone_model',
                             type=str,
-                            default="resgagn",
+                            default="ggnn",
                             help='the backbone model of features extract')
 
         # 目前output model 参数没有用。
@@ -257,7 +257,7 @@ class FL_CodeCompletion_Four:
 
 
         checkpoint = torch.load(task1_load_model_file)
-        task1_model.load_state_dict(checkpoint['model_state_dict'], strict=True)
+        task1_model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         #task1_model.eval()
         for name, parameter in task1_model.named_parameters():
             parameter.requires_grad = False

@@ -4,7 +4,7 @@ from dataProcessing import CSharpStaticGraphDataset, CSharpStaticMake_task_input
 from dataProcessing import CSharpStaticGraphDatasetNaming, CSharpStaticNamingMake_task_input
 
 
-from models import ResGAGN, GNN_FiLM, Edge_Conv
+from models import ResGAGN, GNN_FiLM, Edge_Conv, GGNN
 from models import FL_FrameWork
 from models import FL_Co_Attention_Four
 
@@ -38,4 +38,6 @@ def name_to_model_class(name: str, args):
         return Edge_Conv, {"max_node_per_graph":args.max_node_per_graph}
     if name in ["gnn_film"]:
         return GNN_FiLM, {}
+    if name in ["ggnn"]:
+        return GGNN, {"max_node_per_graph":args.max_node_per_graph}
     raise ValueError("Unkown model name '%s'" % name)
