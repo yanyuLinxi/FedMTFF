@@ -143,3 +143,4 @@ ServerResult/
 *.cpython-37.pyc
 *.png
 trained_models/
+checkpoint/
