@@ -39,7 +39,7 @@ class MTFF:
         #parser.add_argument('--load_model_file', type=str, default="trained_models/model_save/Single-Task_2022-05-07-18-27-35_26536_resgagn_best_model", help='')
 
         # 多模型导入，用来做特征融合的。
-        parser.add_argument('--multi_model_dir', type=str, default="trained_models/feature_fusion/test", help='')
+        parser.add_argument('--feature_model_dir', type=str, default="trained_models/feature_fusion/test", help='')
 
         # 模型训练
         parser.add_argument('--backbone_model',
@@ -179,15 +179,16 @@ class MTFF:
             
         else:
             # 构造模型
-            if not os.path.exists(self.args.multi_model_dir):
-                raise Exception("模型导入地址不存在 %s" % self.args.multi_model_dir)
+            if not os.path.exists(self.args.feature_model_dir):
+                raise Exception("模型导入地址不存在 %s" % self.args.feature_model_dir)
             
             self.feature_models = []
             
-            for files in os.listdir(self.args.multi_model_dir):
+            for files in os.listdir(self.args.feature_model_dir):
                 if files.endswith("joblib"):
-                    filepath = os.path.join(self.args.multi_model_dir, files)
+                    filepath = os.path.join(self.args.feature_model_dir, files)
                     temp_model = joblib.load(filepath)
+                    self.log_line(f"读入特征提取模型:{filepath}, 总模型数量:{len(self.feature_models)+1}")
                     
                     for param in temp_model.parameters():
                         # 将模型的参数的反向传播设置为False。

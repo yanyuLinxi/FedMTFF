@@ -311,10 +311,13 @@ class CSharpStaticGraphDatasetGenerator:
             max_graph=20000,
             max_variable_candidates=5,
             num_workers=int(cpu_count() / 2),  # 并行数。目前官方库好像是用大于0有问题，待验证。如果有问题，设置为0
+            slice_edge_type=None,
             device="cpu",
+            **kwargs,
     ):
         self.device = device
         self.num_edge_types = num_edge_types
+        self.slice_edge_type=slice_edge_type
         self._dataset = LRStaticGraphDataset(root, value_dict, type_dict, graph_node_max_num_chars, max_node_per_graph,
                                              max_graph, max_variable_candidates)
         self.batch_iterator = DataLoader(self._dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
@@ -324,12 +327,11 @@ class CSharpStaticGraphDatasetGenerator:
         #   数据当中，边的种类数量会影响隐藏层权重的大小。所以各个数据集边的种类数量必须统一。
         #   但测试过程中，可能会需要测试不同种类的边排列组合的效果。所以使用统一的参数num_edge_types来确定边的数量。
         #   并规定edge_list的边种类数必须等于这个值。然后用edge_list统一的在模型中完成训练。
+            
         for batch_data in self.batch_iterator:
             batch_data = batch_data.to(self.device)
-            data = {
-                "x":
-                batch_data.x,
-                "edge_list": [
+            
+            edge_list = [
                     batch_data.Child_index,
                     batch_data.NextToken_index,
                     batch_data.LastUse_index,
@@ -340,7 +342,19 @@ class CSharpStaticGraphDatasetGenerator:
                     batch_data.GuardedBy_index,
                     batch_data.FormalArgName_index,
                     batch_data.ReturnsTo_index,
-                ][:self.num_edge_types],
+                ]
+            
+            if self.slice_edge_type is not None:
+                assert len(self.slice_edge_type)==self.num_edge_types, "数据集中边的数量不等于规定数量"
+                edge_list = [edge_list[index] for index in self.slice_edge_type]
+            else:
+                edge_list = edge_list[:self.num_edge_types]
+                
+                
+            data = {
+                "x":
+                batch_data.x,
+                "edge_list": edge_list,
                 "slot_id":
                 batch_data.slot_id,
                 "candidate_ids":
@@ -356,7 +370,6 @@ class CSharpStaticGraphDatasetGenerator:
                 "label":
                 batch_data.label,
             }
-            assert len(data["edge_list"])==self.num_edge_types, "数据集中边的数量不等于规定数量"
             yield data
 
 

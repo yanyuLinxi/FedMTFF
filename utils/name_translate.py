@@ -3,7 +3,7 @@ import json
 from multiprocessing import cpu_count
 
 # 本地库
-from models import GGNN, ResGAGN, GNN_FiLM, Edge_Conv, MTFF_Co_Attention
+from models import GGNN, residual_graph_attention, GNN_FiLM, Edge_Conv, MTFF_Co_Attention, Tensor_GCN
 from dataProcessing import CSharpStaticGraphDatasetGenerator
 from tasks import VarmisuseOutputLayer
 
@@ -55,6 +55,7 @@ def name_to_dataset(name: str, path: str, data_fold: DataFold, args, num_workers
         max_node_per_graph=args.max_node_per_graph,
         num_workers=num_workers,
         device=args.device,
+        slice_edge_type=args.slice_edge_type,
     )
 
 
@@ -80,7 +81,7 @@ def name_to_model(name: str, args, **kwargs):
                     dropout=args.dropout_rate,
                     device=args.device)
     elif name in ["resgagn"]:
-        return ResGAGN(num_edge_types=args.num_edge_types,
+        return residual_graph_attention(num_edge_types=args.num_edge_types,
                        in_features=args.graph_node_max_num_chars,
                        out_features=args.out_features,
                        embedding_out_features=args.h_features,
@@ -111,6 +112,17 @@ def name_to_model(name: str, args, **kwargs):
             out_features=args.out_features,
             embedding_out_features=args.h_features,
             embedding_num_classes=70,
+            max_node_per_graph=args.max_node_per_graph,
+            device=args.device
+        )
+    elif name in ["tensorgcn", "tensor_gcn"]:
+        return Tensor_GCN(
+            num_edge_types=args.num_edge_types,
+            in_features=args.graph_node_max_num_chars,
+            out_features=args.out_features,
+            embedding_out_features=args.h_features,
+            embedding_num_classes=70,
+            dropout=args.dropout_rate,
             max_node_per_graph=args.max_node_per_graph,
             device=args.device
         )
