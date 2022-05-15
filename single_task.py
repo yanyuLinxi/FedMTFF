@@ -135,6 +135,9 @@ class Single_Task:
         self._loaded_datasets[DataFold.TRAIN] = name_to_dataset(self.args.dataset_name, train_path, DataFold.TRAIN, self.args, num_workers=self.args.dataset_num_workers)
         self._loaded_datasets[DataFold.VALIDATION] = name_to_dataset(self.args.dataset_name, validate_path, DataFold.VALIDATION, self.args, num_workers=self.args.dataset_num_workers)
 
+        self.args.train_data_nums = self._loaded_datasets[DataFold.TRAIN].data_nums
+        self.args.valid_data_nums = self._loaded_datasets[DataFold.VALIDATION].data_nums
+
     def save_model(self, path):
         if not os.path.exists(path):
             os.makedirs(path)

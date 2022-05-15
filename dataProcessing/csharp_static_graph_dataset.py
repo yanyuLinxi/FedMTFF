@@ -133,6 +133,7 @@ class LRStaticGraphDataset(Dataset):
                                   do_node_trans=False):
         """将[src,tgt]转为输入到data对象中的edge_index，即tensor([src...],[tgt...])
             加上自连接边、加上双向边。
+            默认情况下，添加自连接边，转为无向图，图做截断。
 
         Args:
             edge_index ([type]): [src,tgt]
@@ -150,9 +151,11 @@ class LRStaticGraphDataset(Dataset):
             else:
                 t, weight = add_self_loops(t, num_nodes=self.max_node_per_graph)  # 这里强制加了0-150的节点。方便做subgraph不会报错。
         if is_to_undirected and t.shape[0] != 0:
+            # 转为无向图
             t = to_undirected(t)
 
         if make_sub_graph:
+            # 对图截断
             t, attr = subgraph(torch.arange(start=0, end=self.max_node_per_graph), t)
 
         if do_node_trans:
@@ -190,12 +193,7 @@ class LRStaticGraphDataset(Dataset):
                         # 由于要将图固定大小，然后做图归一化，所以小于这个数的图需要被抛弃。
                         continue
 
-                    # 制作一个转换dict，将0-self.max_node_per_graph节点进行扰乱。
-                    node_id_list = list(range(self.max_node_per_graph))
-                    shuffle(node_id_list)
-                    #self.node_trans_dict = {i:node_id_list[i] for i in node_id_list}
-                    #self.node_trans_dict_reverse = {node_id_list[i]:i for i in node_id_list}
-
+                    
                     # edge_index
                     Edges = ContextGraph["Edges"]
                     Child = self.trans_list_to_edge_tensor(Edges.get("Child", None))
@@ -320,6 +318,7 @@ class CSharpStaticGraphDatasetGenerator:
         self.slice_edge_type=slice_edge_type
         self._dataset = LRStaticGraphDataset(root, value_dict, type_dict, graph_node_max_num_chars, max_node_per_graph,
                                              max_graph, max_variable_candidates)
+        self.data_nums = len(self._dataset)
         self.batch_iterator = DataLoader(self._dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
     def batch_generator(self):
