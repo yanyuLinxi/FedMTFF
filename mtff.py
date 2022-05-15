@@ -53,14 +53,15 @@ class MTFF:
         parser.add_argument('--cur_epoch', type=int, default=1, help='用做读取checkpoint再训练的参数，手动设置无效。')
         parser.add_argument('--batch_size', type=int, default=64, help='')
         parser.add_argument('--dropout_rate', type=float, default=0., help='keep_prob = 1-dropout_rate')
-        parser.add_argument('--h_features', type=int, default=64, help='')
-        parser.add_argument('--out_features', type=int, default=64, help='')
+        parser.add_argument('--h_features', type=int, default=128, help='')
+        parser.add_argument('--out_features', type=int, default=128, help='')
         parser.add_argument('--graph_node_max_num_chars', type=int, default=19, help='图中节点的初始特征维度')
         parser.add_argument('--max_node_per_graph', type=int, default=50, help='一个图最多的节点个数')
         parser.add_argument('--device', type=str, default="cuda", help='')
 
 
         # 数据集相关
+        parser.add_argument('--slice_edge_type', type=str, default="[0,1,2, 3]", help='数据集中边的数量。')
         parser.add_argument('--num_edge_types', type=int, default=4, help='数据集中边的数量。')
         parser.add_argument('--train_data_dir',
                             type=str,
@@ -91,6 +92,11 @@ class MTFF:
 
     def __init__(self, args):
         self.args = args
+        # pre parse args
+        if self.args.slice_edge_type is not None:
+            self.args.slice_edge_type = json.loads(self.args.slice_edge_type)
+            self.args.num_edge_types=len(self.args.slice_edge_type)
+        
         self.run_id = "_".join([self.name(), time.strftime("%Y-%m-%d-%H-%M-%S"), str(getpid())])
         self.__load_data()
         self.__make_model()
