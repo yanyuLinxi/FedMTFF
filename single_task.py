@@ -18,6 +18,7 @@ import os
 # 导入本地库
 from utils import name_to_dataset, name_to_model, name_to_output_model, DataFold
 from utils import pretty_print_epoch_task_metrics, cal_early_stopping_metric, cal_metrics
+from utils import set_seed
 
 # 重构当前代码
 
@@ -58,15 +59,15 @@ class Single_Task:
 
 
         # 数据集相关
-        parser.add_argument('--slice_edge_type', type=str, default="[0,1,2]", help='数据集中边的数量。')
+        parser.add_argument('--slice_edge_type', type=str, default="[0,1,2,3,4,5,6,7,8]", help='数据集中边的数量。')
         parser.add_argument('--num_edge_types', type=int, default=3, help='数据集中边的数量。')
         parser.add_argument('--train_data_dir',
                             type=str,
-                            default="data/lrtemp",
+                            default="data/csharp/train_data",
                             help='')
         parser.add_argument('--validate_data_dir',
                             type=str,
-                            default="data/lrtemp",
+                            default="data/csharp/validate_data",
                             help='')
         parser.add_argument('--dataset_name', type=str, default="csharp", help='the name of the dataset. optional:[python, csharp]')
         parser.add_argument(
@@ -81,6 +82,15 @@ class Single_Task:
             help='')
         parser.add_argument('--dataset_num_workers', type=int, default=0, help='如果设置为None，则启用cpu_count/2个进程。若为0，则不预先加载。这是个坑，每个batch都会重新创建进程，竟然不是进程池，很难以理解。设置为0，不用想，创建进程的开销比读取数据的开销还大。')
         
+        # 其他参数设置
+        parser.add_argument('--seed', type=int, default=42,
+                        help="random seed for initialization")
+        parser.add_argument("--slot_singal", default="<SLOT>", type=str,
+                        help="slot singal during training, default=<SLOT>")
+        parser.add_argument('--max_graph', type=int, default=100000,
+                        help="max data graph. max_graph = None时， 为使用所有数据")
+        
+        parser.add_argument('--notes', type=str, default="None", help=' notes ')
         return parser
 
     @staticmethod
@@ -93,8 +103,12 @@ class Single_Task:
         if self.args.slice_edge_type is not None:
             self.args.slice_edge_type = json.loads(self.args.slice_edge_type)
             self.args.num_edge_types=len(self.args.slice_edge_type)
+        if self.args.max_graph is None:
+            import sys
+            self.args.max_graph = sys.maxsize
         
-        self.run_id = "_".join([self.name(), time.strftime("%Y-%m-%d-%H-%M-%S"), str(getpid())])
+        set_seed(args)
+        self.run_id = "_".join([self.name(), time.strftime("%Y-%m-%d-%H-%M-%S"), str(getpid()), self.args.backbone_model])
         self.__load_data()
         self.__make_model()
 

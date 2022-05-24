@@ -49,7 +49,7 @@ class Tensor_GCN(MessagePassing):
         #self.thirdNorm = torch.nn.InstanceNorm2d(out_features)  # 这个就是自己要找的
 
         self.lin = nn.Linear(out_features, out_features)
-        self.conv1 = GATConv(out_features, out_features//8, add_self_loops=True, heads=8, concat=True)
+        self.conv1 = GCNConv(out_features, out_features, add_self_loops=add_self_loops)
 
 
     # def forward(self, x, edge_list: List[torch.tensor], **kwargs):

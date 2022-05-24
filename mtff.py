@@ -18,6 +18,7 @@ import os
 # 导入本地库
 from utils import name_to_dataset, name_to_model, name_to_output_model, DataFold
 from utils import pretty_print_epoch_task_metrics, cal_early_stopping_metric, cal_metrics
+from utils import set_seed
 
 # 重构当前代码
 
@@ -83,7 +84,13 @@ class MTFF:
             default="vocab_dict/python_terminal_dict_1k_type.json",
             help='')
         parser.add_argument('--dataset_num_workers', type=int, default=0, help='如果设置为None，则启用cpu_count/2个进程。若为0，则不预先加载。这是个坑，每个batch都会重新创建进程，竟然不是进程池，很难以理解。设置为0，不用想，创建进程的开销比读取数据的开销还大。')
-        
+
+
+        # 其他参数设置
+        parser.add_argument('--seed', type=int, default=42,
+                        help="random seed for initialization")
+        parser.add_argument("--slot_singal", default="<SLOT>", type=str,
+                        help="slot singal during training, default=<SLOT>")
         return parser
 
     @staticmethod
@@ -97,6 +104,7 @@ class MTFF:
             self.args.slice_edge_type = json.loads(self.args.slice_edge_type)
             self.args.num_edge_types=len(self.args.slice_edge_type)
         
+        set_seed(args)
         self.run_id = "_".join([self.name(), time.strftime("%Y-%m-%d-%H-%M-%S"), str(getpid())])
         self.__load_data()
         self.__make_model()
