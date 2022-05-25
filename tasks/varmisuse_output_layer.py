@@ -7,6 +7,8 @@ import torch
 import torch.nn.functional as F
 from typing import List, Tuple
 
+from utils.model_metrics import cal_metrics
+
 # 本地库
 
 
@@ -15,6 +17,8 @@ class VarmisuseOutputLayer(nn.Module):
         self,
         out_features,
         max_variable_candidates=5,
+        criterion=nn.CrossEntropyLoss(),
+        metrics=cal_metrics,
         device="cpu",
     ):
         super(VarmisuseOutputLayer, self).__init__()
@@ -26,12 +30,15 @@ class VarmisuseOutputLayer(nn.Module):
             nn.Linear(out_features, out_features),
         )
         self.varmisuse_layer = nn.Linear(out_features * 2 + 1, 1)
+        self.criterion=criterion
+        self.metrics = metrics
 
     def forward(self,
                 output,
                 slot_id,
                 candidate_ids,
                 candidate_masks,
+                label=None, 
                 **kwargs):
         output = self.varmisuse_linear(output)
         
@@ -53,4 +60,14 @@ class VarmisuseOutputLayer(nn.Module):
         logits = torch.squeeze(logits, dim=-1)  # shape: g, c
         logits += (1.0 - candidate_masks.view(-1, self.max_variable_candidates)) * -1e7
 
-        return logits
+        result = [logits]
+
+        if label is not None:
+            loss = self.criterion(logits, label)
+            result.append(loss)
+        
+        if self.metrics:
+            metrics = cal_metrics(F.softmax(logits, dim=-1), label)
+            result.append(metrics)
+            
+        return result

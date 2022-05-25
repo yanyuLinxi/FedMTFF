@@ -62,7 +62,7 @@ class PYGraphData(Data):
         self.x = x
     """
 
-    def load_attr(self, ast, ncs, comesFrom, computedFrom, ast_reverse, ncs_reverse, comesFrom_reverse, computedFrom_reverse, selfLoop, x, slot_id, candidate_ids, candidate_masks, label):
+    def load_attr(self, ast, ncs, comesFrom, computedFrom, ast_reverse, ncs_reverse, comesFrom_reverse, computedFrom_reverse, selfLoop, x, slot_id, candidate_ids, candidate_masks, label, value_label):
         """由于dataset的限制，不能初始化的时候传入参数，所以设立一个函数传入参数。
             # 所有的边的名称必须以index结尾
         Args:
@@ -87,6 +87,7 @@ class PYGraphData(Data):
         self.candidate_ids = candidate_ids
         self.candidate_masks = candidate_masks
         self.label = label
+        self.value_label=value_label
 
 
 def extract_edges(ast_node_list, tree, node_parent):
@@ -541,6 +542,7 @@ def convert_examples_to_features(item,
                                  max_node_per_graph,
                                  slot_singal,
                                  graph_node_max_chars,
+                                 value_dict,
                                  lang="python"):
     func, sha, cache = item
 
@@ -582,6 +584,9 @@ def convert_examples_to_features(item,
     #print("slot node index", nodeindex2exper[slot_index])
     #print("candidate node index", [nodeindex2exper[index] for index in candidate_index])
     
+    # slot节点的变量值。
+    slot_node_value = nodeindex2exper[slot_index]
+    
     nodeindex2exper[slot_index] = slot_singal
     try:
         node_embedding = trans_string_to_embedding(nodeindex2exper, graph_node_max_chars, num_nodes=max_node_per_graph)
@@ -606,6 +611,8 @@ def convert_examples_to_features(item,
 
     edges["selfLoop"] = trans_list_to_edge_tensor(None, is_add_self_loop=True, max_node_per_graph=max_node_per_graph, is_to_undirected=False, truncate=False)
 
+    value_label = value_dict.get(slot_node_value, len(value_dict))
+
     data = PYGraphData()
     data.load_attr(
         **edges,
@@ -614,6 +621,7 @@ def convert_examples_to_features(item,
         candidate_ids=torch.tensor(candidate_index).type(torch.LongTensor),
         candidate_masks=torch.tensor([True] * len(candidate_index)).type(torch.FloatTensor),
         label=torch.tensor([0]).type(torch.LongTensor),
+        value_label = torch.tensor([value_label]).type(torch.LongTensor)
     )
 
     return data
@@ -741,7 +749,8 @@ class PYGraphDataset(Dataset):
                                          num_candidates=self.max_variable_candidates,
                                          max_node_per_graph=self.max_node_per_graph,
                                          slot_singal=self.slot_singal,
-                                         graph_node_max_chars=self.graph_node_max_chars)
+                                         graph_node_max_chars=self.graph_node_max_chars,
+                                         value_dict=self.value_dict)
             if d is not None:
                 # 将数据落盘
                 torch.save(d, osp.join(self.processed_dir, 'data_{}.pt'.format(idx)))
@@ -840,6 +849,8 @@ class PythonStaticGraphDatasetGenerator:
                 batch_data.num_nodes,
                 "label":
                 batch_data.label,
+                "value_label":
+                batch_data.value_label,
             }
             yield data
 

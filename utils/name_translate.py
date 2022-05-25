@@ -1,12 +1,15 @@
 from enum import Enum
 import json
 from multiprocessing import cpu_count
+import torch.nn as nn
+
 
 # 本地库
 from models import GGNN, residual_graph_attention, GNN_FiLM, Edge_Conv, MTFF_Co_Attention, Tensor_GCN
 from models import Transformer_GCN, Relational_GCN, Deep_GCN
 from dataProcessing import CSharpStaticGraphDatasetGenerator, PythonStaticGraphDatasetGenerator
-from tasks import VarmisuseOutputLayer
+from tasks import VarmisuseOutputLayer, VarnamingOutputLayer
+from .model_metrics import cal_metrics
 
 
 class DataFold(Enum):
@@ -168,14 +171,26 @@ def name_to_output_model(name: str, args):
     Raises:
         ValueError: 类名不存在
     """
+    with open(args.value_dict_dir, 'r') as f:
+        value_dict = json.load(f)
+    with open(args.type_dict_dir, 'r') as f:
+        type_dict = json.load(f)
+    
     name = name.lower()
     name = name.replace(concat_singal, "")
     if name in ["vm", "varmisuse", "variablemisuse"]:
         return VarmisuseOutputLayer(out_features=args.out_features,
                                     max_variable_candidates=args.max_variable_candidates,
+                                    criterion=nn.CrossEntropyLoss(),
+                                    metrics=cal_metrics,
                                     device=args.device)
-    elif name in ["cc", "codecompletion", "varnaming"]:
+    elif name in ["cc", "varnaming",  "codecompletion" ]:
         # TODO: 待补充
-        pass
+        return VarnamingOutputLayer(out_features=args.out_features,
+                                    classifier_nums=len(value_dict)+1,
+                                    criterion=nn.CrossEntropyLoss(),
+                                    metrics=cal_metrics,
+                                    device=args.device
+                                    )
     else:
         raise ValueError("Unkown output model name '%s'" % name)

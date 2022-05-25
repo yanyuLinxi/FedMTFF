@@ -229,11 +229,6 @@ class MTFF:
             self.args.num_model_params = sum(
                 p.numel() for p in list(self.model.parameters()))  # numel()
     
-    def criterion(self, y_score, y_true, criterion=torch.nn.CrossEntropyLoss()):
-        # 默认使用交叉熵， TODO: 修改为从参数中获取损失函数并修改。
-        loss = criterion(y_score, y_true)
-        metrics = cal_metrics(F.softmax(y_score, dim=-1), y_true)
-        return loss, metrics
     
     def __run_epoch(
         self,
@@ -274,9 +269,8 @@ class MTFF:
                 self.model.train()
                 self.output_model.train()
                 output = self.model(**batch_data)
-                logits = self.output_model(output, **batch_data)
-                loss, metrics = self.criterion(logits,
-                                               batch_data["label"])
+                logits, loss, metrics = self.output_model(output, **batch_data)
+
                 epoch_loss += loss.item()
                 task_metric_results.append(metrics)
 
@@ -293,9 +287,8 @@ class MTFF:
                 with torch.no_grad():
 
                     output = self.model(**batch_data)
-                    logits = self.output_model(output, **batch_data)
-                    loss, metrics = self.criterion(logits,
-                                                   batch_data["label"])
+                    logits, loss, metrics = self.output_model(output, **batch_data)
+
                     epoch_loss += loss.item()
                     task_metric_results.append(metrics)
 

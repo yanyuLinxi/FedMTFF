@@ -49,6 +49,7 @@ class Tensor_GCN(MessagePassing):
         #self.thirdNorm = torch.nn.InstanceNorm2d(out_features)  # 这个就是自己要找的
 
         self.lin = nn.Linear(out_features, out_features)
+        #self.conv1 = nn.ModuleList([GATConv(out_features, out_features//8, add_self_loops=True, heads=8, concat=True) for _ in range(self.num_edge_types)])
         self.conv1 = GATConv(out_features, out_features//8, add_self_loops=True, heads=8, concat=True)
 
 
@@ -102,6 +103,15 @@ class Tensor_GCN(MessagePassing):
         out = torch.sum(out, dim=0)  # V, D
         out = F.relu(out)
         out = self.lin(out)
+        
+        # edge_list = torch.concat(edge_list, dim=1)
+        # out_concat = []
+        # for i in range(self.num_edge_types):
+        #     temp_out = self.conv1[i](ggnn_out, edge_list)
+        #     temp_out = F.relu(temp_out)
+        #     out_concat.append(temp_out)
+        # out = sum(out_concat)
+        # out = self.lin(out)
 
         return out
 

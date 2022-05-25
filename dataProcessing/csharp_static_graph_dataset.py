@@ -368,6 +368,8 @@ class CSharpStaticGraphDatasetGenerator:
                 batch_data.num_nodes,
                 "label":
                 batch_data.label,
+                "value_label":
+                batch_data.value_label
             }
             yield data
 

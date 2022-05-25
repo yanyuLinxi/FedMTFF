@@ -29,7 +29,7 @@ class Single_Task:
 
         
         # 任务相关
-        parser.add_argument('--output_model', type=str, default="varmisuse", help='输出层的任务，可选varmisuse, codecompletion')
+        parser.add_argument('--output_model', type=str, default="vm", help='输出层的任务，可选varmisuse, codecompletion')
         parser.add_argument('--max_variable_candidates', type=int, default=5, help='')
         
         # 输出相关
@@ -202,11 +202,6 @@ class Single_Task:
             self.args.num_model_params = sum(
                 p.numel() for p in list(self.model.parameters()))  # numel()
     
-    def criterion(self, y_score, y_true, criterion=torch.nn.CrossEntropyLoss()):
-        # 默认使用交叉熵， TODO: 修改为从参数中获取损失函数并修改。
-        loss = criterion(y_score, y_true)
-        metrics = cal_metrics(F.softmax(y_score, dim=-1), y_true)
-        return loss, metrics
     
     def __run_epoch(
         self,
@@ -247,9 +242,7 @@ class Single_Task:
                 self.model.train()
                 self.output_model.train()
                 output = self.model(**batch_data)
-                logits = self.output_model(output, **batch_data)
-                loss, metrics = self.criterion(logits,
-                                               batch_data["label"])
+                logits, loss, metrics = self.output_model(output, **batch_data)
                 epoch_loss += loss.item()
                 task_metric_results.append(metrics)
 
@@ -265,9 +258,7 @@ class Single_Task:
                 with torch.no_grad():
 
                     output = self.model(**batch_data)
-                    logits = self.output_model(output, **batch_data)
-                    loss, metrics = self.criterion(logits,
-                                                   batch_data["label"])
+                    logits, loss, metrics = self.output_model(output, **batch_data)
                     epoch_loss += loss.item()
                     task_metric_results.append(metrics)
 
