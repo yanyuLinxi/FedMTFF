@@ -35,7 +35,7 @@ class LRStaticGraphData(Data):
 
     def load_attr(self, Child, NextToken, LastUse, LastWrite, LastLexicalUse, ComputedFrom, GuardedByNegation,
                   GuardedBy, FormalArgName, ReturnsTo, x, slot_id, candidate_ids, candidate_masks, label, value_label,
-                  type_label):
+                  type_label, slot_node_name, candidate_node_name,file_name,slot_location,):
         """由于dataset的限制，不能初始化的时候传入参数，所以设立一个函数传入参数。
 
         Args:
@@ -69,6 +69,10 @@ class LRStaticGraphData(Data):
         self.label = label
         self.value_label = value_label
         self.type_label = type_label
+        self.slot_node_name = slot_node_name,
+        self.candidate_node_name = candidate_node_name,
+        self.file_name = file_name,
+        self.slot_location = slot_location,
 
         # TODO: cat_dim __inc__这两个函数的调用变了，需要查看库文件。
 
@@ -106,6 +110,14 @@ class LRStaticGraphDataset(Dataset):
         return listdir(self.raw_dir)
 
     @property
+    def processed_dir(self):
+        # 当为变量误用的时候调用processed 文件夹中的内容。当为变量预测的时候，调用processed_naming文件夹中的文件。
+        if self.max_variable_candidates != 5:
+            return osp.join(self.root, f"processed_candidates_{self.max_variable_candidates}")
+        else:
+            return osp.join(self.root, "processed")
+
+    @property
     def processed_file_names(self):
         if not osp.exists(self.processed_dir):
             mkdir(self.processed_dir)
@@ -124,43 +136,46 @@ class LRStaticGraphDataset(Dataset):
         download_url(url, self.raw_dir)
         ...'''
 
-    def trans_list_to_edge_tensor(self,
-                                  edge_index,
-                                  is_add_self_loop=True,
-                                  is_to_undirected=True,
-                                  self_loop_num_nodes: int = None,
-                                  make_sub_graph=True,
-                                  do_node_trans=False):
+    def trans_list_to_edge_tensor(self, edge_index,
+                              is_add_self_loop=True,
+                              max_node_per_graph=None,
+                              is_to_undirected=True,
+                              truncate=True):
         """将[src,tgt]转为输入到data对象中的edge_index，即tensor([src...],[tgt...])
             加上自连接边、加上双向边。
             默认情况下，添加自连接边，转为无向图，图做截断。
 
         Args:
             edge_index ([type]): [src,tgt]
+            max_node_per_graph: 一个图最多的节点树，用于做截断、添加自连接边、转为无向图。
             add_self_loop (bool, optional): 是否加自连接边. Defaults to True.
             to_undirected (bool, optional): 是否转为无向图. Defaults to True.
+        Return:
+            edge: 完成处理后的edge
         """
+        # 做子图截断
+        if truncate and edge_index is not None:
+            # 对图截断
+            edge_index = [e for e in edge_index if e[0]<max_node_per_graph and e[1]<max_node_per_graph]
+            # t, attr = subgraph(torch.arange(start=0, end=max_node_per_graph), t)
+            
+            
+        # 检查是否为空
         if edge_index is not None and len(edge_index) != 0:  # 当edge_index存在且有边时。
             t = torch.tensor(edge_index).t().contiguous()
         else:
             t = torch.tensor([]).type(torch.LongTensor).t().contiguous()
 
+        # 添加自连接边
         if is_add_self_loop:
-            if self_loop_num_nodes:
-                t, weight = add_self_loops(t, num_nodes=self_loop_num_nodes)
-            else:
-                t, weight = add_self_loops(t, num_nodes=self.max_node_per_graph)  # 这里强制加了0-150的节点。方便做subgraph不会报错。
+            t, weight = add_self_loops(t, num_nodes=max_node_per_graph)  # 这里强制加了0-150的节点。方便做subgraph不会报错。
+
+        # 转为无向图
         if is_to_undirected and t.shape[0] != 0:
             # 转为无向图
             t = to_undirected(t)
 
-        if make_sub_graph:
-            # 对图截断
-            t, attr = subgraph(torch.arange(start=0, end=self.max_node_per_graph), t)
 
-        if do_node_trans:
-            t_new = torch.tensor([[self.node_trans_dict[i.item()] for i in row] for row in t]).type(torch.LongTensor)
-            t = t_new
         return t
 
     def process(self):
@@ -189,23 +204,23 @@ class LRStaticGraphDataset(Dataset):
                     SymbolCandidates = raw_dict["SymbolCandidates"]
 
                     num_nodes = len(NodeLabels)
-                    if num_nodes < self.max_node_per_graph:
-                        # 由于要将图固定大小，然后做图归一化，所以小于这个数的图需要被抛弃。
-                        continue
+                    # if num_nodes < self.max_node_per_graph:
+                    #     # 由于要将图固定大小，然后做图归一化，所以小于这个数的图需要被抛弃。
+                    #     continue
 
                     
                     # edge_index
                     Edges = ContextGraph["Edges"]
-                    Child = self.trans_list_to_edge_tensor(Edges.get("Child", None))
-                    NextToken = self.trans_list_to_edge_tensor(Edges.get("NextToken", None))
-                    LastUse = self.trans_list_to_edge_tensor(Edges.get("LastUse", None))
-                    LastWrite = self.trans_list_to_edge_tensor(Edges.get("LastWrite", None))
-                    LastLexicalUse = self.trans_list_to_edge_tensor(Edges.get("LastLexicalUse", None))
-                    ComputedFrom = self.trans_list_to_edge_tensor(Edges.get("ComputedFrom", None))
-                    GuardedByNegation = self.trans_list_to_edge_tensor(Edges.get("GuardedByNegation", None))
-                    GuardedBy = self.trans_list_to_edge_tensor(Edges.get("GuardedBy", None))
-                    FormalArgName = self.trans_list_to_edge_tensor(Edges.get("FormalArgName", None))
-                    ReturnsTo = self.trans_list_to_edge_tensor(Edges.get("ReturnsTo", None))
+                    Child = self.trans_list_to_edge_tensor(Edges.get("Child", None), max_node_per_graph=self.max_node_per_graph)
+                    NextToken = self.trans_list_to_edge_tensor(Edges.get("NextToken", None), max_node_per_graph=self.max_node_per_graph)
+                    LastUse = self.trans_list_to_edge_tensor(Edges.get("LastUse", None), max_node_per_graph=self.max_node_per_graph)
+                    LastWrite = self.trans_list_to_edge_tensor(Edges.get("LastWrite", None), max_node_per_graph=self.max_node_per_graph)
+                    LastLexicalUse = self.trans_list_to_edge_tensor(Edges.get("LastLexicalUse", None), max_node_per_graph=self.max_node_per_graph)
+                    ComputedFrom = self.trans_list_to_edge_tensor(Edges.get("ComputedFrom", None), max_node_per_graph=self.max_node_per_graph)
+                    GuardedByNegation = self.trans_list_to_edge_tensor(Edges.get("GuardedByNegation", None), max_node_per_graph=self.max_node_per_graph)
+                    GuardedBy = self.trans_list_to_edge_tensor(Edges.get("GuardedBy", None), max_node_per_graph=self.max_node_per_graph)
+                    FormalArgName = self.trans_list_to_edge_tensor(Edges.get("FormalArgName", None), max_node_per_graph=self.max_node_per_graph)
+                    ReturnsTo = self.trans_list_to_edge_tensor(Edges.get("ReturnsTo", None), max_node_per_graph=self.max_node_per_graph)
                     #SelfLoop = add_self_loops(torch.tensor([]), num_nodes=num_nodes)[0].type(torch.LongTensor)
                     #SelfLoopEdge
 
@@ -219,13 +234,16 @@ class LRStaticGraphDataset(Dataset):
 
                     correct_candidate_id = None
                     distractor_candidate_ids = []  # type: List[int]
+                    candidate_node_name = []
                     for candidate in SymbolCandidates:
                         if candidate["IsCorrect"]:
                             #correct_candidate_id = self.node_trans_dict[candidate['SymbolDummyNode']]
                             correct_candidate_id = candidate['SymbolDummyNode']
+                            slot_node_name = candidate["SymbolName"]
                         else:
                             #distractor_candidate_ids.append(self.node_trans_dict[candidate['SymbolDummyNode']])
                             distractor_candidate_ids.append(candidate['SymbolDummyNode'])
+                        candidate_node_name.append(candidate["SymbolName"])
                     if correct_candidate_id is None:
                         continue
 
@@ -277,6 +295,10 @@ class LRStaticGraphDataset(Dataset):
                         label=torch.tensor([0]).type(torch.LongTensor),
                         value_label=value_label,
                         type_label=type_label,
+                        slot_node_name = slot_node_name,
+                        candidate_node_name = candidate_node_name,
+                        file_name = filename,
+                        slot_location = slotTokenIdx,
                     )
                     torch.save(graph_data, osp.join(self.processed_dir, 'data_{}.pt'.format(data_i)))
                     data_i += 1
@@ -320,6 +342,7 @@ class CSharpStaticGraphDatasetGenerator:
                                              max_graph, max_variable_candidates)
         self.data_nums = len(self._dataset)
         self.batch_iterator = DataLoader(self._dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+        self.size = len(self.batch_iterator)
 
     def batch_generator(self):
         # 解释下为什么需要这个类来做一层接口：
@@ -331,16 +354,16 @@ class CSharpStaticGraphDatasetGenerator:
             batch_data = batch_data.to(self.device)
             
             edge_list = [
-                    batch_data.Child_index,
-                    batch_data.NextToken_index,
-                    batch_data.LastUse_index,
-                    batch_data.LastWrite_index,
-                    batch_data.LastLexicalUse_index,
-                    batch_data.ComputedFrom_index,
-                    batch_data.GuardedByNegation_index,
-                    batch_data.GuardedBy_index,
-                    batch_data.FormalArgName_index,
-                    batch_data.ReturnsTo_index,
+                    batch_data.Child_index, # AST
+                    batch_data.NextToken_index, # NCS
+                    batch_data.LastUse_index, # DFG 一种 # CFG
+                    batch_data.LastWrite_index, # DFG 一种
+                    batch_data.LastLexicalUse_index, # DFG 一种
+                    batch_data.ComputedFrom_index, # DFG 一种
+                    batch_data.GuardedByNegation_index, # DFG ss一种
+                    batch_data.GuardedBy_index, # DFG 一种
+                    batch_data.FormalArgName_index, # DFG 一种
+                    batch_data.ReturnsTo_index, # DFG 一种
                 ]
             
             if self.slice_edge_type is not None:
@@ -369,7 +392,9 @@ class CSharpStaticGraphDatasetGenerator:
                 "label":
                 batch_data.label,
                 "value_label":
-                batch_data.value_label
+                batch_data.value_label,
+                "batch_data":
+                batch_data,
             }
             yield data
 

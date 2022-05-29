@@ -31,27 +31,42 @@ class VarnamingOutputLayer(nn.Module):
         self.varmisuse_layer = nn.Linear(out_features, classifier_nums)
         self.criterion=criterion
         self.metrics = metrics
+        self.classifier_nums = classifier_nums
 
     def forward(self,
                 output,
                 slot_id,
                 value_label=None, 
+                output_label=False, 
+                metric_functions=None,
                 **kwargs):
         output = self.varnaming_linear(output)
         
         slot_embedding = output[slot_id]  # shape: g, d
         
         logits = self.varmisuse_layer(slot_embedding)
-        
+        logits = F.softmax(logits, dim=-1)
 
         result = [logits]
 
         if value_label is not None:
             loss = self.criterion(logits, value_label)
             result.append(loss)
+            if output_label:
+                result.append(value_label)
         
-        if self.metrics:
-            metrics = cal_metrics(F.softmax(logits, dim=-1), value_label)
+        
+        # 如果metrics传入进来了，则计算每一个metrics的值。并返回。否则使用self.metrics
+        if metric_functions is not None:
+            if type(metric_functions) is list:
+                metrics = dict()
+                for m_function in metric_functions:
+                    temp_metrics = m_function(logits, value_label, self.classifier_nums)
+                    metrics.update(temp_metrics)
+            else:
+                metrics = metric_functions(logits, value_label, self.classifier_nums)
+        elif self.metrics:
+            metrics = self.metrics(logits, value_label, self.classifier_nums)
             result.append(metrics)
             
         return result

@@ -26,8 +26,8 @@ ALPHABET_DICT["UNK"] = 1
 
 BIG_NUMBER = 1e7
 
-from parser import DFG_python, DFG_java, DFG_ruby, DFG_go, DFG_php, DFG_javascript
-from parser import (remove_comments_and_docstrings, tree_to_token_index, index_to_code_token, tree_to_variable_index,
+from tree_parser import DFG_python, DFG_java, DFG_ruby, DFG_go, DFG_php, DFG_javascript
+from tree_parser import (remove_comments_and_docstrings, tree_to_token_index, index_to_code_token, tree_to_variable_index,
                     tree_variable_index_to_ast_index, tree_to_node_list)
 from tree_sitter import Language, Parser
 
@@ -41,7 +41,7 @@ dfg_function = {
 }
 
 #load parsers
-LANGUAGE = Language('parser/my-languages.so', "python")
+LANGUAGE = Language('tree_parser/my-languages.so', "python")
 parser = Parser()
 parser.set_language(LANGUAGE)
 parser = [parser, dfg_function["python"]]
@@ -606,8 +606,8 @@ def convert_examples_to_features(item,
         # 截断 Yes
         # 添加自连接边 No
         # 转为无向图 No
-        edges[name] = trans_list_to_edge_tensor(edge, max_node_per_graph=max_node_per_graph, truncate=True, is_add_self_loop=False, is_to_undirected=False)
-        edges[name+"_reverse"] = trans_list_to_edge_tensor(reverse_edge(edge), max_node_per_graph=max_node_per_graph, truncate=True, is_add_self_loop=False, is_to_undirected=False)
+        edges[name] = trans_list_to_edge_tensor(edge, max_node_per_graph=max_node_per_graph, truncate=True, is_add_self_loop=True, is_to_undirected=True)
+        edges[name+"_reverse"] = trans_list_to_edge_tensor(reverse_edge(edge), max_node_per_graph=max_node_per_graph, truncate=True, is_add_self_loop=True, is_to_undirected=True)
 
     edges["selfLoop"] = trans_list_to_edge_tensor(None, is_add_self_loop=True, max_node_per_graph=max_node_per_graph, is_to_undirected=False, truncate=False)
 
@@ -817,11 +817,11 @@ class PythonStaticGraphDatasetGenerator:
                     batch_data.ncs_index,
                     batch_data.comesFrom_index,
                     batch_data.computedFrom_index,
+                    batch_data.selfLoop_index,
                     batch_data.ast_reverse_index,
                     batch_data.ncs_reverse_index,
                     batch_data.comesFrom_reverse_index,
                     batch_data.computedFrom_reverse_index,
-                    batch_data.selfLoop_index,
                 ]
             
             if self.slice_edge_type is not None:
@@ -851,6 +851,8 @@ class PythonStaticGraphDatasetGenerator:
                 batch_data.label,
                 "value_label":
                 batch_data.value_label,
+                "batch_data":
+                batch_data,
             }
             yield data
 

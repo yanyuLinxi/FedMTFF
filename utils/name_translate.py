@@ -21,7 +21,7 @@ class DataFold(Enum):
 concat_singal = "_- ,/\\"
 
 
-def name_to_dataset(name: str, path: str, data_fold: DataFold, args, num_workers=int(cpu_count() / 2)):  # 返回类型为对象
+def name_to_dataloader(name: str, path: str, data_fold: DataFold, args, num_workers=int(cpu_count() / 2)):  # 返回类型为对象
     """将字符串转为数据预处理对象
 
     Args:
@@ -64,6 +64,7 @@ def name_to_dataset(name: str, path: str, data_fold: DataFold, args, num_workers
         slice_edge_type=args.slice_edge_type,
         slot_singal=args.slot_singal,
     )
+
 
 
 def name_to_model(name: str, args, **kwargs):

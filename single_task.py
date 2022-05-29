@@ -16,9 +16,14 @@ import joblib
 import os
 
 # 导入本地库
-from utils import name_to_dataset, name_to_model, name_to_output_model, DataFold
+from utils import name_to_dataloader, name_to_model, name_to_output_model, DataFold
 from utils import pretty_print_epoch_task_metrics, cal_early_stopping_metric, cal_metrics
 from utils import set_seed
+
+import warnings
+warnings.filterwarnings('ignore')
+
+from utils.model_metrics import roc_curve_point
 
 # 重构当前代码
 
@@ -30,7 +35,7 @@ class Single_Task:
         
         # 任务相关
         parser.add_argument('--output_model', type=str, default="vm", help='输出层的任务，可选varmisuse, codecompletion')
-        parser.add_argument('--max_variable_candidates', type=int, default=5, help='')
+        parser.add_argument('--max_variable_candidates', type=int, default=10, help='')
         
         # 输出相关
         parser.add_argument('--result_dir', type=str, default="trained_models/", help='')
@@ -49,7 +54,7 @@ class Single_Task:
         parser.add_argument('--lr_deduce_per_epoch', type=int, default=10, help='')
         parser.add_argument('--max_epochs', type=int, default=1500, help='')
         parser.add_argument('--cur_epoch', type=int, default=1, help='用做读取checkpoint再训练的参数，手动设置无效。')
-        parser.add_argument('--batch_size', type=int, default=64, help='')
+        parser.add_argument('--batch_size', type=int, default=128, help='')
         parser.add_argument('--dropout_rate', type=float, default=0., help='keep_prob = 1-dropout_rate')
         parser.add_argument('--h_features', type=int, default=128, help='')
         parser.add_argument('--out_features', type=int, default=128, help='')
@@ -63,7 +68,7 @@ class Single_Task:
         parser.add_argument('--num_edge_types', type=int, default=3, help='数据集中边的数量。')
         parser.add_argument('--train_data_dir',
                             type=str,
-                            default="data/csharp/train_data",
+                            default="data/lrtemp/train_data",
                             help='')
         parser.add_argument('--validate_data_dir',
                             type=str,
@@ -95,7 +100,7 @@ class Single_Task:
 
     @staticmethod
     def name() -> str:
-        return "Single-Task"
+        return "Single_Task"
 
     def __init__(self, args):
         self.args = args
@@ -108,7 +113,7 @@ class Single_Task:
             self.args.max_graph = sys.maxsize
         
         set_seed(args)
-        self.run_id = "_".join([self.name(), time.strftime("%Y-%m-%d-%H-%M-%S"), str(getpid()), self.args.backbone_model])
+        self.run_id = "_".join([self.name(), time.strftime("%Y_%m_%d_%H_%M_%S"), str(getpid()), self.args.backbone_model, self.args.notes])
         self.__load_data()
         self.__make_model()
 
@@ -123,7 +128,7 @@ class Single_Task:
 
     @property
     def best_model_file(self):
-        return osp.join(self.args.result_dir, osp.join("model_save", "%s_%s_best_model" % (self.run_id, self.args.backbone_model)))
+        return osp.join(self.args.result_dir, osp.join("model_save", "%s" % (self.run_id)))
     
     
     def __load_data(self):
@@ -146,13 +151,13 @@ class Single_Task:
         # 导入数据
         if self.args.dataset_num_workers is None:
             self.args.dataset_num_workers = int(cpu_count() / 2)
-        self._loaded_datasets[DataFold.TRAIN] = name_to_dataset(self.args.dataset_name, train_path, DataFold.TRAIN, self.args, num_workers=self.args.dataset_num_workers)
-        self._loaded_datasets[DataFold.VALIDATION] = name_to_dataset(self.args.dataset_name, validate_path, DataFold.VALIDATION, self.args, num_workers=self.args.dataset_num_workers)
+        self._loaded_datasets[DataFold.TRAIN] = name_to_dataloader(self.args.dataset_name, train_path, DataFold.TRAIN, self.args, num_workers=self.args.dataset_num_workers)
+        self._loaded_datasets[DataFold.VALIDATION] = name_to_dataloader(self.args.dataset_name, validate_path, DataFold.VALIDATION, self.args, num_workers=self.args.dataset_num_workers)
 
         self.args.train_data_nums = self._loaded_datasets[DataFold.TRAIN].data_nums
         self.args.valid_data_nums = self._loaded_datasets[DataFold.VALIDATION].data_nums
 
-    def save_model(self, path):
+    def save_model(self, path, others_dict=None):
         if not os.path.exists(path):
             os.makedirs(path)
         joblib.dump(self.model, os.path.join(path, "model.joblib"))
@@ -160,6 +165,9 @@ class Single_Task:
         torch.save(self.optimizer,os.path.join(path, "optimizer.pt"))
         with open(os.path.join(path, "params.json"), "w") as f:
             json.dump(vars(self.args), f, indent=4)
+        if others_dict is not None:
+            for key in others_dict:
+                joblib.dump(others_dict[key], os.path.join(path, key+".joblib"))
     
     def load_model(self, path):
         if not os.path.exists(path):
@@ -278,7 +286,6 @@ class Single_Task:
         return per_graph_loss, task_metric_results, processed_graphs, processed_batch, graphs_per_sec, nodes_per_sec, processed_graphs, processed_nodes
 
     
-    
     def train(self, quiet=False):
         """对模型进行训练
 
@@ -338,6 +345,8 @@ class Single_Task:
                     % (early_stopping_metric, best_valid_metric,
                        self.best_model_file))
                 best_valid_metric = early_stopping_metric
+                # 保存每一个batch的fpr,tpr，然后将其保存下来，最后读取再绘制。[{"fpr":[], "tpr":[], "auc":[]}].存储为json。
+                
                 best_val_metric_epoch = epoch
                 best_val_metric_descr = valid_metric_descr
 

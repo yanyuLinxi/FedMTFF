@@ -16,7 +16,7 @@ import joblib
 import os
 
 # 导入本地库
-from utils import name_to_dataset, name_to_model, name_to_output_model, DataFold
+from utils import name_to_dataloader, name_to_model, name_to_output_model, DataFold
 from utils import pretty_print_epoch_task_metrics, cal_early_stopping_metric, cal_metrics
 from utils import set_seed
 
@@ -143,8 +143,8 @@ class MTFF:
         # 导入数据
         if self.args.dataset_num_workers is None:
             self.args.dataset_num_workers = int(cpu_count() / 2)
-        self._loaded_datasets[DataFold.TRAIN] = name_to_dataset(self.args.dataset_name, train_path, DataFold.TRAIN, self.args, num_workers=self.args.dataset_num_workers)
-        self._loaded_datasets[DataFold.VALIDATION] = name_to_dataset(self.args.dataset_name, validate_path, DataFold.VALIDATION, self.args, num_workers=self.args.dataset_num_workers)
+        self._loaded_datasets[DataFold.TRAIN] = name_to_dataloader(self.args.dataset_name, train_path, DataFold.TRAIN, self.args, num_workers=self.args.dataset_num_workers)
+        self._loaded_datasets[DataFold.VALIDATION] = name_to_dataloader(self.args.dataset_name, validate_path, DataFold.VALIDATION, self.args, num_workers=self.args.dataset_num_workers)
 
     def save_model(self, path):
         """

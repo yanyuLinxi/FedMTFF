@@ -20,7 +20,6 @@ from torch_sparse import SparseTensor
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.nn.dense.linear import Linear
 from torch_geometric.typing import Adj, OptTensor, PairTensor
-from torch_geometric.utils import softmax
 from .mlp_layer import MLPLayer
 
 class BasicGAT(MessagePassing):

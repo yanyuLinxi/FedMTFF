@@ -38,7 +38,9 @@ class VarmisuseOutputLayer(nn.Module):
                 slot_id,
                 candidate_ids,
                 candidate_masks,
-                label=None, 
+                label=None,
+                output_label=False,
+                metric_functions=None,
                 **kwargs):
         output = self.varmisuse_linear(output)
         
@@ -59,15 +61,29 @@ class VarmisuseOutputLayer(nn.Module):
         logits = self.varmisuse_layer(slot_cand_comb)  # shape: g, c, 1
         logits = torch.squeeze(logits, dim=-1)  # shape: g, c
         logits += (1.0 - candidate_masks.view(-1, self.max_variable_candidates)) * -1e7
+        logits=F.softmax(logits, dim=-1)
 
         result = [logits]
 
         if label is not None:
             loss = self.criterion(logits, label)
             result.append(loss)
+            if output_label:
+                result.append(label)
         
-        if self.metrics:
-            metrics = cal_metrics(F.softmax(logits, dim=-1), label)
+        # 如果metrics传入进来了，则计算每一个metrics的值。并返回。否则使用self.metrics
+        if metric_functions is not None:
+            if type(metric_functions) is list:
+                metrics = dict()
+                for m_function in metric_functions:
+                    temp_metrics = m_function(logits, label, self.max_variable_candidates)
+                    metrics.update(temp_metrics)
+            else:
+                metrics = metric_functions(logits, label, self.max_variable_candidates)
             result.append(metrics)
+        elif self.metrics:
+            metrics = self.metrics(logits, label, self.max_variable_candidates)
+            result.append(metrics)
+            
             
         return result
